@@ -1,0 +1,5 @@
+{"id": "ent-learner", "type": "person", "name": "the learner", "first_seen": "2026-10-10", "aliases": [], "tomb": null}
+{"id": "ent-sibling", "type": "person", "name": "Juno", "first_seen": "2026-10-10", "aliases": [], "tomb": null}
+{"id": "ent-algebra", "type": "topic", "name": "Gaussian elimination", "first_seen": "2026-10-10", "aliases": ["elimination"], "tomb": null}
+{"id": "ent-teacher", "type": "person", "name": "the teacher", "first_seen": "2026-10-10", "aliases": [], "tomb": null}
+{"id": "ent-class", "type": "group", "name": "the maths class", "first_seen": "2026-10-10", "aliases": [], "tomb": null}

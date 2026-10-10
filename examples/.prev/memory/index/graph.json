@@ -1,0 +1,16 @@
+{
+ "built_from": "memory/graph/",
+ "entities": [
+  "ent-algebra",
+  "ent-class",
+  "ent-learner",
+  "ent-sibling",
+  "ent-teacher"
+ ],
+ "format": "tessera/0.1",
+ "relations": [
+  "rel-0001",
+  "rel-0002",
+  "rel-0004"
+ ]
+}

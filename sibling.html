@@ -1,0 +1,510 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>a cognitive sibling</title>
+<!--
+  One file.  No framework, no build, no bundler, no package manager, no install.
+  Open it by double-clicking; read it with `cat`; delete it and nothing is lost.
+  (Cognitive Sibling - Interface Specification v0.1, sections 1, 2, 6)
+
+  What this page may never do, and does not:
+    hold durable state (no localStorage, no IndexedDB, no preferences, no cookies);
+    be the only route to anything;
+    enforce access;
+    reach any origin except the helper on loopback;
+    write anything outside the archive.
+  The sibling's files are never written from here.  The page does not know, and must
+  not show, which weights are speaking.
+-->
+<style>
+  :root {
+    --ink: #17161a; --paper: #fbfaf7; --quiet: #6d6a63; --line: #e3dfd7;
+    --note: #7a5200; --learner: #2c4a5e; --sibling: #17161a; --lock: #6d6a63;
+    --max: 44rem;
+  }
+  html { background: var(--paper); color: var(--ink); }
+  body {
+    margin: 0 auto; padding: 3.5rem 1.5rem 6rem; max-width: var(--max);
+    font-family: "Atkinson Hyperlegible", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 17px; line-height: 1.62; -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: .01em; margin: 0; }
+  h2 { font-size: .78rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+       color: var(--quiet); margin: 2.6rem 0 .7rem; }
+  .sub { color: var(--quiet); font-size: .84rem; margin: .15rem 0 0; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+         border-bottom: 1px solid var(--line); padding-bottom: .9rem; }
+  .bar nav { display: flex; gap: .9rem; font-size: .82rem; }
+  .bar nav button { background: none; border: 0; padding: 0; font: inherit; color: var(--quiet);
+                    cursor: pointer; text-decoration: underline; text-underline-offset: .18em; }
+  .bar nav button[aria-pressed="true"] { color: var(--ink); text-decoration: none; font-weight: 700; }
+  .who { font-size: .82rem; color: var(--note); border-left: 2px solid var(--note);
+         padding: .1rem 0 .1rem .6rem; margin: 1.2rem 0 0; }
+  .say { margin: 1.8rem 0 0; }
+  .say .actor { font-size: .74rem; letter-spacing: .07em; text-transform: uppercase;
+                color: var(--quiet); display: block; margin-bottom: .25rem; }
+  .say .words { white-space: pre-wrap; }
+  .learner .words { color: var(--learner); }
+  .empty .words { color: var(--quiet); font-style: italic; }
+  .turn { margin: 1.9rem 0 0; }
+  .offer { margin: 1.4rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .offer button, .send {
+    font: inherit; font-size: .88rem; padding: .42rem .8rem; border-radius: 2px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
+  }
+  .offer button:hover, .send:hover { border-color: var(--quiet); }
+  textarea { width: 100%; min-height: 5.4rem; font: inherit; padding: .6rem;
+             border: 1px solid var(--line); border-radius: 2px; background: #fff;
+             color: var(--ink); resize: vertical; }
+  input, select { font: inherit; font-size: .9rem; padding: .38rem .45rem; margin-top: .35rem;
+                  border: 1px solid var(--line); border-radius: 2px; background: #fff;
+                  color: var(--ink); width: 100%; max-width: 30rem; }
+  #panel label { display: block; font-size: .86rem; margin-top: .7rem; }
+  #panel label input { display: inline; width: auto; margin: 0 .35rem 0 0; }
+  .row { display: flex; align-items: center; gap: .8rem; margin-top: .5rem; }
+  .quiet { color: var(--quiet); font-size: .8rem; }
+  .keep { background: none; border: 0; padding: 0; font: inherit; font-size: .78rem;
+          color: var(--quiet); text-decoration: underline; text-underline-offset: .18em;
+          cursor: pointer; }
+  aside { border-top: 1px solid var(--line); margin-top: 3.5rem; }
+  dl { margin: 0; font-size: .86rem; }
+  dt { color: var(--quiet); font-size: .74rem; letter-spacing: .07em; text-transform: uppercase;
+       margin-top: .9rem; }
+  dd { margin: .2rem 0 0; }
+  ol.loop { margin: .2rem 0 0; padding-left: 1.2rem; font-size: .86rem; color: var(--ink); }
+  ol.loop li { margin: .1rem 0; }
+  ol.loop li.here { font-weight: 700; }
+  .lock { font-size: .86rem; color: var(--lock); }
+  table { border-collapse: collapse; width: 100%; font-size: .8rem; margin-top: .4rem; }
+  th, td { text-align: left; padding: .28rem .5rem .28rem 0; border-bottom: 1px solid var(--line);
+           vertical-align: top; }
+  th { color: var(--quiet); font-weight: 700; font-size: .72rem; letter-spacing: .06em;
+       text-transform: uppercase; }
+  code { font-size: .84rem; background: #f2efe9; padding: .08rem .25rem; border-radius: 2px; }
+  .gone { color: var(--quiet); font-size: .9rem; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #eceae4; --paper: #16151a; --quiet: #9d9a93; --line: #2e2c33;
+            --note: #d8a54a; --learner: #9dc0d6; --sibling: #eceae4; --lock: #9d9a93; }
+    textarea, .offer button, .send, input, select { background: #1e1d23; color: var(--ink); }
+    code { background: #232229; }
+  }
+</style>
+
+<body>
+<div class="bar">
+  <div>
+    <h1 id="name">a cognitive sibling</h1>
+    <p class="sub">one learner, one archive, no outside line</p>
+  </div>
+  <nav>
+    <button id="view-learner" aria-pressed="true">learner</button>
+    <button id="view-research" aria-pressed="false">research</button>
+    <button id="view-settings" aria-pressed="false">settings</button>
+  </nav>
+</div>
+
+<p class="who" id="who">reading the archive…</p>
+
+<div id="panel" hidden></div>
+
+<main id="session">
+  <p class="gone" id="waiting">talking to the helper…</p>
+</main>
+
+<div class="turn" id="composer" hidden>
+  <textarea id="turn" placeholder="say what you have, not what you think you should have"></textarea>
+  <div class="row">
+    <button class="send" id="send">say it</button>
+    <button class="quiet" id="close">close the session</button>
+    <span class="quiet" id="status"></span>
+  </div>
+</div>
+
+<aside id="aside"></aside>
+
+<script>
+"use strict";
+// The helper is the only thing this page may talk to.  Loopback, and nothing else.
+var PORT = new URLSearchParams(location.search).get("port") || 8799;
+var API = "http://127.0.0.1:" + PORT;
+var state = null, view = "learner", sent = 0, withoutWords = 0;
+// The sibling's name is read from the archive, never assumed here.  It is the pair's
+// fact, and this page is a derived artifact (Interface Specification sections 2, 6).
+var NAME = "the sibling";
+
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = text;
+  return n;
+}
+
+function call(path, body) {
+  return fetch(API + path, {
+    method: body ? "POST" : "GET",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); });
+}
+
+// -- the two presentations, one store (Interface Specification section 5) ------
+function switchTo(which) {
+  view = which;
+  ["learner", "research", "settings"].forEach(function (v) {
+    document.getElementById("view-" + v).setAttribute("aria-pressed", String(which === v));
+  });
+  var panel = document.getElementById("panel"), session = document.getElementById("session");
+  if (which === "settings") {
+    // the session log is left exactly as it is: switching views must not lose a turn
+    panel.hidden = false; session.hidden = true;
+    document.getElementById("composer").hidden = true;
+    document.getElementById("aside").textContent = "";
+    call("/setup").then(function (r) {
+      if (r.ok) settingsScreen(r.body);
+      else panel.appendChild(el("p", "quiet", "the helper said: " + (r.body.error || "?")));
+    });
+    return;
+  }
+  panel.hidden = true; session.hidden = false;
+  if (state) { renderAside(); document.getElementById("composer").hidden = false; }
+}
+
+// -- settings: which model speaks, what she is called, where the archive is ---
+function settingsScreen(o) {
+  var panel = document.getElementById("panel");
+  panel.textContent = "";
+  var f = el("section", "turn");
+  f.appendChild(el("h2", null, o.setup ? "first time here \u2014 two things to set"
+                                      : "settings \u2014 the model, the name, the archive"));
+  f.appendChild(el("p", null, "Which local model should speak, and what the sibling is "
+    + "called. Both can be changed here at any time; the name is kept in the archive, so "
+    + "changing it there is written down as something that happened."));
+  f.appendChild(el("p", "quiet", "The model runs on this computer. Nothing about a session "
+    + "leaves the machine, and this page talks to nothing but the helper."));
+
+  // 1. the model
+  f.appendChild(el("h2", null, "which model should speak"));
+  var picks = [];
+  (o.providers || []).forEach(function (pr) {
+    (pr.models || []).forEach(function (m) {
+      picks.push({ id: pr.id, name: pr.name, base_url: pr.base_url, model: m });
+    });
+  });
+  var chosen = null;
+  if (picks.length) {
+    var sel = document.createElement("select");
+    picks.forEach(function (pk, i) {
+      var opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = pk.name + " \u2014 " + pk.model;
+      if (o.provider && o.provider.model === pk.model) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    chosen = picks[Number(sel.value) || 0];
+    sel.onchange = function () { chosen = picks[Number(this.value)]; u.value = ""; };
+    f.appendChild(sel);
+  } else {
+    f.appendChild(el("p", "quiet", "No local model server answered on this machine. Start "
+      + "Ollama, LM Studio or llama.cpp and reload this page \u2014 or type its address below."));
+  }
+  var quiet = (o.providers || []).filter(function (pr) { return !(pr.models || []).length; });
+  if (quiet.length) {
+    f.appendChild(el("p", "quiet", "checked and not answering: "
+      + quiet.map(function (pr) { return pr.name; }).join(", ")));
+  }
+  var u = document.createElement("input");
+  u.placeholder = "http://127.0.0.1:11434";
+  var m2 = document.createElement("input");
+  m2.placeholder = "the model's name there, e.g. llama3.2:3b";
+  f.appendChild(el("p", "quiet", "not on the list?"));
+  f.appendChild(u); f.appendChild(m2);
+
+  // 2. the name
+  f.appendChild(el("h2", null, "what the sibling is called"));
+  var n = document.createElement("input");
+  n.value = o.sibling || "";
+  n.placeholder = "a name";
+  f.appendChild(n);
+
+  // 3. the archive
+  f.appendChild(el("h2", null, "where the archive lives"));
+  var a = document.createElement("input");
+  a.value = o.archive || o.suggested_archive || "";
+  f.appendChild(a);
+  var mk = document.createElement("label");
+  var cb = document.createElement("input");
+  cb.type = "checkbox";
+  if (!o.archive) cb.checked = true;
+  mk.appendChild(cb);
+  mk.appendChild(document.createTextNode("make a new archive there if there is none"));
+  f.appendChild(mk);
+  if (o.constitution === false) {
+    f.appendChild(el("p", "quiet", "This archive has no constitution yet. The sibling "
+      + "writes that itself on the first session \u2014 not the installer, and not this page."));
+  }
+
+  var save = el("button", "send", o.setup ? "set up and start" : "save");
+  var status = el("p", "quiet", "");
+  save.onclick = function () {
+    var provider = chosen;
+    if (u.value.trim()) provider = { id: "custom", base_url: u.value.trim(), model: m2.value.trim() };
+    if (!provider || !provider.model) { status.textContent = "choose which model should speak."; return; }
+    status.textContent = "\u2026";
+    save.disabled = true;
+    call("/setup", { archive: a.value.trim(), name: n.value.trim(), provider: provider,
+                     create: cb.checked }).then(function (r) {
+      save.disabled = false;
+      if (!r.ok) { status.textContent = "the helper refused: " + (r.body.error || "?"); return; }
+      status.textContent = "saved \u2014 starting.";
+      location.reload();
+    }).catch(function (e) {
+      save.disabled = false;
+      status.textContent = "the helper is not answering (" + e.message + ").";
+    });
+  };
+  f.appendChild(save);
+  f.appendChild(status);
+  panel.appendChild(f);
+}
+
+function disclosure(st) {
+  var p = el("p", "who", st.disclosure || "");
+  document.getElementById("who").replaceWith(p);
+  p.id = "who";
+}
+
+function sayBlock(st, who, words, opts) {
+  var wrap = el("div", "say" + (opts && opts.cls ? " " + opts.cls : ""));
+  wrap.appendChild(el("span", "actor", who));
+  wrap.appendChild(el("div", "words", (words === "" || words === null || words === undefined)
+      ? "said nothing." : words));
+  return wrap;
+}
+
+function greetingBlock(st) {
+  var s = el("section", "turn");
+  s.appendChild(sayBlock(st, NAME, st.greeting));
+  var offer = el("div", "offer");
+  if (st.offered) {
+    // name what they did last time, in its own casing: the part after the colon if there is one
+    var named = st.offered.indexOf(": ") > -1
+      ? st.offered.split(": ").slice(1).join(": ") : st.offered;
+    var a = el("button", null, "continue with \u201c" + named + "\u201d");
+    a.onclick = function () { send("Let us continue with " + st.offered + "."); };
+    offer.appendChild(a);
+  }
+  var b = el("button", null, "something else");
+  b.onclick = function () {
+    document.getElementById("turn").focus();
+    document.getElementById("status").textContent = "her move, then.";
+  };
+  offer.appendChild(b);
+  s.appendChild(offer);
+  if (st.voice_note) s.appendChild(el("p", "quiet",
+    "the voice was replaced since the last session. nothing else about it changed."));
+  return s;
+}
+
+function send(text) {
+  var box = document.getElementById("turn");
+  var words = text !== undefined ? text : box.value;
+  if (!words.trim()) return;
+  document.getElementById("status").textContent = "…";
+  document.getElementById("composer").hidden = true;
+  var log = document.getElementById("session");
+  log.appendChild(sayBlock(state, "you", words, { cls: "learner" }));
+  call("/turn", { text: words }).then(function (r) {
+    if (!r.ok) { note("the helper refused: " + (r.body.error || "?")); return; }
+    sent += 1;
+    if (r.body.stated_ignorance) withoutWords += 1;
+    var b = sayBlock(state, NAME, r.body.reply, { cls: r.body.reply ? "" : "empty" });
+    if (r.body.ids && r.body.ids.length) {
+      var keep = el("button", "keep", "keep this exchange");
+      keep.onclick = function () {
+        call("/mark", { ids: r.body.ids }).then(function (m) {
+          keep.replaceWith(el("span", "quiet", "kept (" + m.body.marked.length + ")"));
+        });
+      };
+      b.appendChild(keep);
+    }
+    log.appendChild(b);
+    if (r.body.session_notes && r.body.session_notes.length)
+      log.appendChild(el("p", "quiet", "helper notes: " + r.body.session_notes.join(" | ")));
+    box.value = "";
+    document.getElementById("composer").hidden = false;
+    document.getElementById("status").textContent = "";
+    box.focus();
+    window.scrollTo(0, document.body.scrollHeight);
+  }).catch(function (e) { note("the helper is not answering (" + e.message + ")."); });
+}
+
+function note(text) {
+  document.getElementById("status").textContent = text;
+  document.getElementById("composer").hidden = false;
+}
+
+function renderAside() {
+  var st = state, a = document.getElementById("aside");
+  a.textContent = "";
+  var dl = el("dl");
+
+  function row(term, value) {
+    if (value === undefined || value === null || value === "") return;
+    dl.appendChild(el("dt", null, term));
+    dl.appendChild(Array.isArray(value)
+      ? (function () { var dd = el("dd"); value.forEach(function (v) { dd.appendChild(v); }); return dd; })()
+      : el("dd", null, value));
+  }
+
+  dl.appendChild(el("dt", null, "working on"));
+  dl.appendChild(el("dd", null, st.curriculum || st.offered || "nothing set"));
+
+  if (st.position && st.position.kind) {
+    dl.appendChild(el("dt", null, "where we are"));
+    dl.appendChild(el("dd", null, "the last thing recorded was a " + st.position.kind
+      + " on " + String(st.position.when).slice(0, 10)));
+  }
+
+  if (st.last_session && st.last_session.date) {
+    dl.appendChild(el("dt", null, "last session"));
+    dl.appendChild(el("dd", null, String(st.last_session.date).slice(0, 10)
+      + " — " + (st.last_session.who || "?") + " said: “"
+      + String(st.last_session.said || "").slice(0, 220) + "”"));
+  }
+
+  dl.appendChild(el("dt", null, "the loop we work in"));
+  var ol = el("ol", "loop");
+  (st.loop || []).forEach(function (step) { ol.appendChild(el("li", null, step)); });
+  var dd = el("dd"); dd.appendChild(ol); dl.appendChild(dd);
+
+  // the sibling's stated ignorance, where it bears on the question: first-class, not debug
+  if (st.ignorance && st.ignorance.length) {
+    dl.appendChild(el("dt", null, "what the sibling does not know"));
+    var ul = el("dd");
+    st.ignorance.forEach(function (line) { ul.appendChild(el("div", null, "— " + line)); });
+    dl.appendChild(ul);
+  }
+
+  if (st.sealed && st.sealed.present) {
+    dl.appendChild(el("dt", null, "locked region"));
+    dl.appendChild(el("dd", "lock", "sealed/ is locked — " + st.sealed.terms));
+  }
+  a.appendChild(dl);
+
+  if (view !== "research") return;
+  var r = st.research || {};
+
+  // the helper's own running notes: a refused greeting is a fact about this session, and
+  // hiding it would be the thing section 6.2 exists to prevent
+  if (st.notes && st.notes.length) {
+    a.appendChild(el("h2", null, "helper notes \u2014 this run only, never written to the archive"));
+    st.notes.forEach(function (n) { a.appendChild(el("p", "quiet", n)); });
+  }
+  a.appendChild(el("h2", null, "research view — the ledgers"));
+
+  if (r.retrieved && r.retrieved.length) {
+    a.appendChild(el("h2", null, "what the sibling was given (by significance, never recency)"));
+    var t = el("table"), hr = el("tr");
+    ["relation", "s", "p", "o", "salience", "score", "evidence"].forEach(function (h) {
+      hr.appendChild(el("th", null, h));
+    });
+    t.appendChild(hr);
+    r.retrieved.forEach(function (row) {
+      var tr = el("tr");
+      [row.id, row.s, row.p, row.o, row.significance, row.score, row.evidence]
+        .forEach(function (v) { tr.appendChild(el("td", null, String(v))); });
+      t.appendChild(tr);
+    });
+    a.appendChild(t);
+  }
+
+  if (r.blocks) {
+    a.appendChild(el("h2", null, "the blocks"));
+    Object.keys(r.blocks).forEach(function (k) {
+      var b = r.blocks[k];
+      a.appendChild(el("p", "quiet", k + " — writable by " + (b.writable_by || "?")
+        + ", revision " + (b.revision || "?") + ", "
+        + String((b.body || "").length) + " chars"));
+      a.appendChild(sayBlock(st, k, b.body));
+    });
+  }
+
+  if (r.tombstones && r.tombstones.length) {
+    a.appendChild(el("h2", null, "erasures (tombstones)"));
+    r.tombstones.forEach(function (row) {
+      a.appendChild(el("p", "quiet", String(row.t || "").slice(0, 10) + " — "
+        + (row.actor || "?") + " erased " + (row.targets || []).join(", ")
+        + " because " + (row.reason || "?") + ", scope " + (row.scope || []).join("/")));
+    });
+  }
+
+  if (r.taught && r.taught.length) {
+    a.appendChild(el("h2", null, "ancestry of what the sibling knows (taught/)"));
+    r.taught.forEach(function (line) { a.appendChild(sayBlock(st, "taught", line)); });
+  }
+
+  var lights = [];
+  if (r.provenance && r.provenance.length)
+    lights.push("provenance: " + r.provenance.length + " entries");
+  if (r.indicators && r.indicators.length)
+    lights.push("indicators (research only, never shown to the sibling): "
+      + JSON.stringify(r.indicators[r.indicators.length - 1]));
+  if (r.trails && r.trails.length)
+    lights.push("open threads: " + r.trails.map(function (x) {
+      return x.name + " (" + (x.steps || []).length + " steps, " + (x.status || "?") + ")";
+    }).join("; "));
+  if (lights.length) {
+    a.appendChild(el("h2", null, "diagnostics"));
+    lights.forEach(function (l) { a.appendChild(el("p", "quiet", l)); });
+  }
+}
+
+function boot() {
+  call("/health").then(function (h) {
+    if (h.ok && h.body.sibling) {
+      NAME = h.body.sibling;
+      document.getElementById("name").textContent = NAME;
+    }
+    // nothing set up yet: ask for a model and a name instead of opening a session
+    if (h.ok && h.body.setup) {
+      var w = document.getElementById("waiting");
+      if (w) w.remove();
+      switchTo("settings");
+      return;
+    }
+  }).catch(function () {});
+  call("/state").then(function (r) {
+    if (r.body && r.body.setup) { var g = document.getElementById("waiting"); if (g) g.remove(); switchTo("settings"); return; }
+    if (!r.ok) { note("the helper said: " + (r.body.error || "?")); return; }
+    state = r.body;
+    document.getElementById("waiting").remove();
+    var log = document.getElementById("session");
+    log.appendChild(greetingBlock(state));
+    disclosure(state);
+    renderAside();
+    document.getElementById("composer").hidden = false;
+  }).catch(function () {
+    document.getElementById("waiting").innerHTML =
+      "the helper is not running, so there is nothing to talk to — and that is not an error, "
+      + "it is the design. Double-click <code>Cognitive Sibling.command</code> to start it, "
+      + "or in a terminal:<br><br>"
+      + "<code>python3 sib.py</code><br><br>"
+      + "The session is also fully usable with no page at all (<code>--open</code>).";
+  });
+}
+
+document.getElementById("view-learner").onclick = function () { switchTo("learner"); };
+document.getElementById("view-research").onclick = function () { switchTo("research"); };
+document.getElementById("view-settings").onclick = function () { switchTo("settings"); };
+document.getElementById("send").onclick = function () { send(); };
+document.getElementById("turn").addEventListener("keydown", function (e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") send();
+});
+document.getElementById("close").onclick = function () {
+  call("/close", { turns: sent, unknown_stated: withoutWords }).then(function () {
+    document.getElementById("status").textContent = "session closed and written.";
+    document.getElementById("composer").hidden = true;
+  });
+};
+boot();
+</script>
+</body>

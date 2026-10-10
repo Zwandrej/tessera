@@ -1,0 +1,20 @@
+# What must never enter this repository
+
+# The helper's own settings: a path, a port, an endpoint.  Per machine, never shared,
+# useless anywhere else, and nothing in the archive depends on it.
+settings.json
+settings.json.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# Archives are NEVER versioned here.  An archive has its own backup story -- snapshots,
+# rotation and an air gap (tessera_bag.py) -- and one of its own rules is that history is
+# never rewritten, which is the opposite of what git does to a file.  Keep archives out of
+# this directory, or under one of these names if you must test here:
+*/archive/
+*Archive/
