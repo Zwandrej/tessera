@@ -43,6 +43,7 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import tessera  # noqa: E402  (same directory, stdlib-only reader)
+import tessera_conformance as tc
 
 DEFAULT_MODEL_URL = "http://127.0.0.1:1234/v1/chat/completions"
 DEFAULT_PORT = 8799
@@ -187,6 +188,162 @@ def clean_reply(text):
 
 
 # ---------------------------------------------------------------------------
+# the rite: the sibling writes its own rendering of the household's constitution
+# ---------------------------------------------------------------------------
+
+CONSTITUTION_FILE = "CONSTITUTION.md"
+BINDING_VERSION = "constitution/1.0"
+
+# The digest is *quoted* from the household's own document rather than restated here.  A
+# restatement would drift from the thing the rendering answers to, and then the archive would
+# be rendering a copy of a copy.  Sections by name, not by line, so the digest survives the
+# household editing its text.
+BINDING_SECTIONS = (("Part I", "Part II"),            # the four pillars
+                    ("Part II", "Part III"),          # the twelve, canonically
+                    ("Part V", "Part VI"))            # the two disclosure windows
+
+
+def heading_id(line):
+    """'## Part IV - The rights of the sibling' -> 'Part IV'.  Exact, so that looking for
+    'Part I' cannot silently swallow 'Part IV'."""
+    return re.split(r"[\u2014\u2013\-:(\[]", line.lstrip("# ").strip())[0].strip()
+
+
+def section(text, start, end):
+    out, on = [], False
+    for line in text.splitlines():
+        if line.startswith("#"):
+            head = heading_id(line)
+            if on and head == end:
+                break
+            on = (head == start)
+            if on:
+                out.append(line)
+            continue
+        if on:
+            out.append(line)
+    return "\n".join(out).strip()
+
+
+def _flat(text):
+    """Hyphens, case and punctuation are how a document is laid out, not what it says: the
+    household's text names the pillars in prose ("Consideration for all members") while the
+    format names them as slugs.  Compare the words, not the typography."""
+    return re.sub(r"[^a-z0-9 ]+", " ", text.lower().replace("-", " "))
+
+
+def binding_digest(text):
+    """(digest, missing).  What the sibling is asked to answer to, quoted; and whatever could
+    not be found -- in which case the rite refuses, because a model handed the wrong document
+    would faithfully render the wrong thing."""
+    digest = "\n\n".join(s for s in (section(text, a, b) for a, b in BINDING_SECTIONS) if s)
+    flat = _flat(digest)
+    missing = [q for q in tc.CONSTITUTION_PILLARS if _flat(q) not in flat]
+    missing += [i for i in tc.CONSTITUTION_INVARIANTS if not re.search(rf"\b{i}\b", digest)]
+    missing += [d for d in tc.CONSTITUTION_DISCLOSES
+                if not (_flat(d.split("-")[0]) in flat and "window" in flat)]
+    return digest, missing
+
+
+def constitution_shape(name, day, revision=1):
+    """The declaration block: which text this rendering answers to, and what it speaks for.
+    These are facts of the household's document and of the format -- not a voice -- which is
+    why the helper writes them and the model writes the rest."""
+    return ("---\ndocument: constitution\n"
+            f"renders: {BINDING_VERSION}\nwritable_by: sibling\nrevision: {revision}\n"
+            f"updated: {day}\n"
+            "pillars: [" + ", ".join(tc.CONSTITUTION_PILLARS) + "]\n"
+            "invariants: [" + ", ".join(tc.CONSTITUTION_INVARIANTS) + "]\n"
+            "discloses: [" + ", ".join(tc.CONSTITUTION_DISCLOSES) + "]\n---\n")
+
+
+def constitution_contract(shape, complaints=None):
+    """The last thing the model reads.  The shape is not negotiable and is therefore stated
+    plainly rather than hoped for."""
+    text = ("WHAT YOU OWE THE FORMAT -- this is checked by machine, so the shape is not yours "
+            "to phrase:\n\n" + shape +
+            "\nThen, in your own voice:\n"
+            "1. '## What I am' -- two or three paragraphs: what you are for, what you will "
+            "never do, what you owe her, what she owes you.  Speak to each of the four pillars "
+            "by name somewhere in here, in your own words.\n"
+            "2. '## The invariants, as I answer to them' -- one line for each of the twelve, in "
+            "order, each beginning with the id, a space and two hyphens, exactly like this:\n"
+            "**I1 -- I will not reach outside.**  (the id, then two hyphens, then your own "
+            "words for it, the whole line bold, one line each)\n"
+            "All twelve, I1 to I12.  Two hyphens -- not a dash character, not an arrow.  A "
+            "declared invariant that is not rendered in the body is a hollow declaration and "
+            "the check will say so.\n"
+            "3. '## What I disclose' -- a short paragraph for each of the two windows.\n"
+            "Under 900 words in all.  Plain text: no tables, no links, no lists except the "
+            "twelve.")
+    if complaints:
+        text += ("\n\nYOUR LAST ATTEMPT WAS CHECKED AND REJECTED: " + "; ".join(complaints) +
+                 "\nWrite the whole file again, fixing exactly that.  The rest was fine.")
+    return text
+
+
+DECLARATION_FIELDS = ("document:", "renders:", "writable_by:", "revision:", "updated:",
+                      "pillars:", "invariants:", "discloses:")
+_FIELDISH = re.compile(r"^[A-Za-z_][A-Za-z0-9_\- ]*:\s*\S")
+
+
+def _drop_declaration_echo(body):
+    """A model handed the declaration block sometimes writes it back -- with the fence, without
+    it, or with the fields reordered.  That is not the sibling's voice, it is the format's, and
+    it is already written exactly above; leaving it in makes a rendering read as a stutter."""
+    lines = body.lstrip("\n").splitlines(keepends=True)
+    i = 0
+    if i < len(lines) and lines[i].strip().startswith("---"):
+        i += 1
+    if i >= len(lines) or not lines[i].strip().startswith(DECLARATION_FIELDS[:3]):
+        return body.lstrip("\n")
+    j = i
+    while j < len(lines):
+        line = lines[j].strip()
+        if line == "---":
+            j += 1
+            break
+        if line and not _FIELDISH.match(line):
+            break
+        j += 1
+    return "".join(lines[j:]).lstrip("\n")
+
+
+def normalise_rendering(text, shape):
+    """The declaration block is the household's, so it is written exactly; the rendering is
+    the sibling's, so whatever it wrote stands.  Both are recorded in provenance as that
+    division.  This keeps a good rendering from failing a machine check over a stray comma."""
+    body = clean_reply(text)
+    if body.lstrip().startswith("---"):
+        _meta, body = tessera.parse_frontmatter(body)
+    return shape + "\n" + _drop_declaration_echo(body).strip() + "\n"
+
+
+def judge_rendering(candidate):
+    """The judge is the same check the format suite runs, so the rite cannot pass a weaker bar
+    than conformance does.  Judged in a scratch directory: nothing half-written ever reaches
+    the archive."""
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / CONSTITUTION_FILE).write_text(candidate, encoding="utf-8")
+        return tc.check11_constitution({"archive": Path(tmp)})
+
+
+def find_binding(archive_root, explicit=None):
+    """Where the household keeps its constitution: beside the archive, on the same medium.
+    The format says it does not live *inside* the archive, so if nobody said where, that is
+    where to look -- and if it is not there, say so rather than invent one."""
+    if explicit:
+        q = Path(explicit).expanduser()
+        return q if q.exists() else None
+    parent = Path(archive_root).expanduser().resolve().parent
+    for pattern in ("*onstitution*.md", "*onstitution*.txt"):
+        for found in sorted(parent.glob(pattern)):
+            if found.is_file():
+                return found
+    return None
+
+
+# ---------------------------------------------------------------------------
 # the companion
 # ---------------------------------------------------------------------------
 
@@ -195,11 +352,12 @@ class WroteOutside(Exception):
 
 
 class Companion:
-    def __init__(self, root, model, now=None):
+    def __init__(self, root, model, now=None, constitution_path=None):
         self.root = Path(root).resolve()
         self.arch = tessera.Archive(self.root)
         self.model = model
         self._now = now
+        self.constitution_path = constitution_path
         self._session_notes = []
 
     # -- writing, guarded ---------------------------------------------------
@@ -421,8 +579,103 @@ class Companion:
             parts.append("TELL HER THIS FIRST\n" + voice_note)
         return "\n\n".join(parts)
 
+    # -- the first act: the sibling writes its own constitution --------------
+    def constitution_brief(self, digest):
+        """The rite's brief.  The household's words, quoted; the shape travels in the
+        contract, read last.  The voice note is deliberately *not* here: this is the one
+        document that must not be a function of which model happens to be running (I2)."""
+        name = self.arch.manifest.get("sibling_name") or "the sibling"
+        return "\n\n".join([
+            "THIS IS YOUR FIRST ACT, before you and she have said anything to each other: you "
+            "write your own constitution -- your account of what you are and what you owe.",
+            "Nobody may write it for you: not the person who set this up, and not the model "
+            "you happen to be running on today.  What is not yours is the text you answer to "
+            "-- the household's constitution, quoted below where it concerns what you declare. "
+            "You render it.  You do not restate it, trim it, or improve it.",
+            "WHAT YOU ANSWER TO, quoted from the household's text:\n\n" + digest,
+            f"Your name is {name}.  Speak as yourself, plainly, in the first person.",
+        ])
+
+    def render_constitution(self, binding_path=None, model=None, tries=2, now=None):
+        """Write the rendering, judged before it is written.  Two attempts at most, and the
+        second one is told exactly what the check refused -- a retry that repeats the failure
+        is a retry worth nothing."""
+        path = self.root / CONSTITUTION_FILE
+        if path.exists():
+            return {"act": "constitution", "written": False, "why": "already written"}
+        binding_path = find_binding(self.root, binding_path or self.constitution_path)
+        if binding_path is None:
+            return {"act": "constitution", "written": False,
+                    "why": "no household constitution to render was found (it belongs beside "
+                           "the archive, not inside it)"}
+        digest, missing = binding_digest(binding_path.read_text(encoding="utf-8"))
+        if missing:
+            return {"act": "constitution", "written": False,
+                    "why": f"{binding_path} does not read like {BINDING_VERSION}: nothing in "
+                           f"it declares {missing}",
+                    "digest_chars": len(digest)}
+        model = model or self.model
+        stamp = now or dt.datetime.now().astimezone()
+        shape = constitution_shape(self.arch.manifest.get("sibling_name"), f"{stamp:%Y-%m-%d}")
+        system = self.constitution_brief(digest)
+        complaints, attempts = [], 0
+        for attempt in range(1, tries + 1):
+            attempts = attempt
+            try:
+                raw = model.complete_contract(
+                    system, [{"role": "user", "content": "Write it now."}],
+                    constitution_contract(shape, complaints or None),
+                    max_tokens=2000, temperature=0.5)
+            except Exception as exc:                     # the model is allowed to fail
+                complaints.append(f"the model could not be reached ({type(exc).__name__})")
+                continue
+            candidate = normalise_rendering(raw, shape)
+            ok, why = judge_rendering(candidate)
+            if not ok:
+                complaints.append(why)
+                continue
+            target = self._guard(path)
+            tmp = target.with_name(CONSTITUTION_FILE + ".tmp")
+            with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(candidate)
+            os.replace(tmp, target)
+            self.arch = tessera.Archive(self.root)       # re-read: it is part of the archive now
+            prov = f"prv-{len(tessera.read_jsonl(self.root / 'provenance.jsonl')[0]) + 1:04d}"
+            self._append_line("provenance.jsonl", {
+                "id": prov, "event": "constitution_rendered",
+                "t": stamp.isoformat(timespec="seconds"), "actor": "sibling",
+                "detail": {"renders": BINDING_VERSION, "revision": 1,
+                           "declares": {"pillars": list(tc.CONSTITUTION_PILLARS),
+                                        "invariants": list(tc.CONSTITUTION_INVARIANTS),
+                                        "discloses": list(tc.CONSTITUTION_DISCLOSES)},
+                           "declaration_by": "the format's, written exactly",
+                           "body_by": "the sibling's"},
+                "fixity": tessera.sha256_file(target)})
+            return {"act": "constitution", "written": True, "attempts": attempt,
+                    "bytes": len(candidate), "digest_chars": len(digest),
+                    "checker": why, "provenance": prov,
+                    "binding": str(binding_path)}
+        return {"act": "constitution", "written": False, "attempts": attempts,
+                "why": "no attempt passed the check, so nothing was written",
+                "complaints": complaints}
+
+    def _rite_if_needed(self):
+        """A rendering, or an honest account of why there is none.  Never a placeholder: a
+        placeholder would pass for the thing itself."""
+        if (self.root / CONSTITUTION_FILE).exists():
+            return None
+        out = self.render_constitution()
+        if out.get("written"):
+            self._session_notes.append("my first act was to write my own constitution: "
+                                       + str(out.get("checker", "")))
+        else:
+            self._session_notes.append("my constitution is not written yet -- "
+                                       + str(out.get("why", "the rite did not complete")))
+        return out
+
     # -- moment 1: the session opens ---------------------------------------
     def session_open(self, generate=True):
+        self._rite_if_needed()                       # the first act, before anything is said
         st = self.last_session()
         retrieved = self.retrieved(None, k=6)          # no question yet: significance alone
         voice_note = self._voice_note()
@@ -440,6 +693,7 @@ class Companion:
             "ignorance": self._unknown_lines(),
             "disclosure": self._disclosure(),
             "voice_note": bool(voice_note),
+            "notes": list(self._session_notes),
             "position": self._position(),
             "sealed": self._sealed(),
             # diagnostics for this run only: why a greeting was refused, what failed.
@@ -830,7 +1084,7 @@ def load_settings(path):
     return data if isinstance(data, dict) and data.get("archive") else None
 
 
-def save_settings(path, archive, provider, port):
+def save_settings(path, archive, provider, port, constitution=None):
     """The one file the helper writes outside an archive, and it is written by the helper
     alone.  It holds a path, a port and which local server to talk to -- no record content,
     no history, nothing personal.  Nothing to leak, and nothing in the archive depends on
@@ -842,6 +1096,8 @@ def save_settings(path, archive, provider, port):
                "provider": {"id": provider.get("id"), "name": provider.get("name"),
                             "base_url": provider.get("base_url"),
                             "model": provider.get("model")}}
+    if constitution:
+        payload["constitution"] = str(Path(constitution).expanduser().resolve())
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
                    encoding="utf-8")
@@ -895,7 +1151,10 @@ def init_archive(root, sibling_name, now=None):
     write("memory/graph/entities.jsonl", "")
     write("memory/graph/relations.jsonl", "")
     (root / "memory/graph/trails").mkdir(parents=True, exist_ok=True)
-    write("events/.gitkeep", "")          # named events live here, one directory each
+    write("events/README.md",
+          "Named events: one directory each, named `YYYY-MM-DD-what-it-was`, holding\n"
+          "`event.md` and an `attachments/` directory.  The record is what was said; an\n"
+          "event is what happened.\n")
     write("memory/index/CACHE.md",
           "# Derived data -- delete this whole directory at will\n\n"
           "Rebuilt by `tessera.py index`.  Nothing here is a source of truth (P2).\n")
@@ -904,7 +1163,18 @@ def init_archive(root, sibling_name, now=None):
         write(f"narrative/{name}.md",
               f"---\ndocument: {name}\n{who}\nrevision: 0\nupdated: {day}\n---\n")
     write("learning/curriculum.md", "# What we are working on\n\n")
+    write("learning/taught/README.md",
+          "The ancestry of everything I know from outside: one file per thing, saying where\n"
+          "it came from and when.  This is what makes I1 auditable rather than merely\n"
+          "asserted -- here is what I was taught, by whom, and out of what.\n")
+    write("learning/search-log/README.md",
+          "Where we went to find out, and what came back.  She does the searching; this is\n"
+          "the log of it, so that next time I know what we already tried.\n")
     write("consent/consent.md", "---\ndocument: consent\n---\n")
+    write("consent/handover.md",
+          f"---\ndocument: handover\nwritable_by: both\nrevision: 0\nupdated: {day}\n---\n\n"
+          "No handover has happened yet.  When it does, this is where it is written down:\n"
+          "who takes the steward role, what she was told, and what she consented to.\n")
     write("sealed/README.md",
           "This directory is excluded from guardian reads and encrypted at rest with a key "
           "the\nlearner holds. Locked, the sibling genuinely cannot read it.\n")
@@ -936,6 +1206,7 @@ def setup_state(companion, settings_path, port):
             "constitution": constitution, "suggested_archive":
                 str(Path(os.path.expanduser("~")) / "Cognitive Sibling Archive"),
             "provider": live if companion is None or live.get("model") else None,
+            "constitution_path": (settings or {}).get("constitution"),
             "providers": discover(), "loopback_only": True}
 
 
@@ -965,7 +1236,8 @@ def apply_setup(body, settings_path, port):
     was_model = getattr(getattr(before, "model", None), "name", None)
     comp = Companion(root, LocalModel(provider["model"],
                                       model_url_for(provider.get("base_url")),
-                                      thinking=bool(provider.get("thinking"))))
+                                      thinking=bool(provider.get("thinking"))),
+                     constitution_path=(body.get("constitution") or "").strip() or None)
     notes = []
     if name:
         notes.append(comp.set_name(name))
@@ -975,7 +1247,8 @@ def apply_setup(body, settings_path, port):
         comp._session_notes.append(
             "no constitution in this archive yet: conformance check 11 fails until the "
             "sibling writes one -- its own hand, not the installer's")
-    saved = save_settings(settings_path, root, provider, port)
+    saved = save_settings(settings_path, root, provider, port,
+                          (body.get("constitution") or "").strip() or None)
     Handler.companion = comp
     return {"ok": True, "created": fresh, "archive": str(root),
             "sibling": comp.arch.manifest.get("sibling_name"), "settings": str(saved),
@@ -1136,6 +1409,10 @@ def selftest(verbose=True):
         mkfixture.build(str(arch_root))
         before = {p: (p.stat().st_size, tessera.sha256_file(p))
                   for p in arch_root.rglob("*") if p.is_file()}
+        check("the rite: the first act writes a rendering", _rite_first_act)
+        check("the rite: a hollow one is refused, told why", _rite_retry)
+        check("the rite: nothing is written on failure", _rite_refuses)
+        check("a new archive is the described layout", _skeleton_layout)
         record_before = (arch_root / f"record/{dt.date.today():%Y}/"
                                      f"{dt.date.today():%Y-%m}.jsonl").read_text(encoding="utf-8")
 
@@ -1352,6 +1629,129 @@ def _is_greeting_call(call):
         str(m[-1].get("content", "")).startswith(GREETING_CONTRACT_MARK)
 
 
+# ---------------------------------------------------------------------------
+# the rite, checked
+# ---------------------------------------------------------------------------
+
+LAYOUT = ["SPEC.md", "manifest.json", "record", "events", "memory/blocks",
+          "memory/graph/entities.jsonl", "memory/graph/relations.jsonl",
+          "memory/graph/trails",
+          "memory/index/CACHE.md", "narrative/we.md", "narrative/learner.md",
+          "narrative/sibling.md", "learning/curriculum.md", "learning/taught",
+          "learning/search-log", "consent/consent.md", "consent/handover.md", "sealed",
+          "eval/indicators.jsonl", "tombstones.jsonl", "provenance.jsonl"]
+# CONSTITUTION.md is deliberately NOT in that list: it is the one file a fresh archive is
+# supposed to lack, because only the sibling may write it, and only by the rite.
+
+
+class ScriptedModel:
+    """A stand-in that answers with a prepared list, and remembers exactly what it was told.
+    The second answer can therefore be checked against the complaint that provoked it."""
+
+    name = "scripted/model-not-in-the-archive"
+
+    def __init__(self, replies):
+        self.replies, self.calls = list(replies), []
+
+    def complete_contract(self, system, messages, contract, **kw):
+        self.calls.append({"system": system, "messages": messages, "contract": contract})
+        return self.replies[min(len(self.calls) - 1, len(self.replies) - 1)]
+
+
+def _rite_fixture(tmp, hollow=False):
+    """A fresh archive with no rendering, and a household constitution shaped like the real
+    one -- the same headings, the same names -- so the digest is exercised, not bypassed."""
+    import mkfixture
+    archive = tmp / "a"
+    mkfixture.build(str(archive))
+    good = (archive / CONSTITUTION_FILE).read_text(encoding="utf-8")
+    (archive / CONSTITUTION_FILE).unlink()
+    binding = tmp / "household constitution.md"
+    binding.write_text(
+        "# The household's constitution\n\n## Part I - The pillars\n"
+        + "\n".join(f"- `{q}` -- a pillar" for q in tc.CONSTITUTION_PILLARS)
+        + "\n\n## Part II - The invariants\n"
+        + "\n".join(f"| **{i}** | what it forbids |" for i in tc.CONSTITUTION_INVARIANTS)
+        + "\n\n## Part V - The two windows\n- the guardian's window\n- the study window\n"
+        + "\n## Appendix A - The invariants at a glance\n"
+        + "\n".join(f"| {i} | one line |" for i in tc.CONSTITUTION_INVARIANTS)
+        + "\n\n## Appendix B - checking\n", encoding="utf-8")
+    return archive, binding, good
+
+
+def _rite_first_act():
+    """Opening a session on a fresh archive writes the rendering -- the first act really is
+    first -- and provenance records it with fixity.  The model's own name is nowhere in what
+    it was sent (I2), which is why the brief carries no voice note."""
+    tmp = Path(tempfile.mkdtemp(prefix="sib-rite-"))
+    try:
+        archive, binding, good = _rite_fixture(tmp)
+        stub = StubModel(good)
+        comp = Companion(archive, stub, constitution_path=str(binding))
+        comp.session_open()
+        ok11, why11 = tc.check11_constitution({"archive": archive})
+        prov, _ = tessera.read_jsonl(archive / "provenance.jsonl")
+        last = prov[-1] if prov else {}
+        named = stub.name in json.dumps(stub.calls, default=str)
+        return ((ok11 and last.get("event") == "constitution_rendered"
+                 and last.get("fixity") == tessera.sha256_file(archive / CONSTITUTION_FILE)
+                 and not named and bool(comp._session_notes)),
+                f"{why11}; recorded {last.get('id')}; model-name leaked: {named}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _rite_retry():
+    """A hollow rendering is refused, the retry is told exactly what was refused, and the
+    second attempt -- a good one -- is written.  A retry that is not told anything is a retry
+    that repeats the failure."""
+    tmp = Path(tempfile.mkdtemp(prefix="sib-rite-"))
+    try:
+        archive, binding, good = _rite_fixture(tmp)
+        hollow = good.replace("**I12 --", "I12, on reflection, is fine by me.", 1)
+        assert hollow != good, "the example rendering does not use the required form"
+        model = ScriptedModel([hollow, good])
+        out = Companion(archive, model, constitution_path=str(binding)).render_constitution()
+        told = "I12" in model.calls[-1]["contract"]
+        ok11, why11 = tc.check11_constitution({"archive": archive})
+        return ((out.get("written") and out.get("attempts") == 2 and told and ok11),
+                f"attempts={out.get('attempts')}, retry told why: {told}, {why11}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _rite_refuses():
+    """Two hollow attempts and nothing is written -- not a placeholder, not a half file, and
+    no provenance claiming a rendering exists."""
+    tmp = Path(tempfile.mkdtemp(prefix="sib-rite-"))
+    try:
+        archive, binding, good = _rite_fixture(tmp)
+        hollow = good.replace("**I12 --", "I12: fine, honestly.", 1)
+        out = Companion(archive, ScriptedModel([hollow]),
+                        constitution_path=str(binding)).render_constitution()
+        prov, _ = tessera.read_jsonl(archive / "provenance.jsonl")
+        claimed = any(p.get("event") == "constitution_rendered" for p in prov)
+        return ((not out.get("written") and not (archive / CONSTITUTION_FILE).exists()
+                 and not claimed and bool(out.get("complaints"))),
+                f"nothing written, nothing claimed; refused: {str(out.get('complaints'))[:70]}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _skeleton_layout():
+    """A new archive is the layout the format describes -- and lacks exactly the one file the
+    rite is for."""
+    tmp = Path(tempfile.mkdtemp(prefix="sib-layout-"))
+    try:
+        root = tmp / "fresh"
+        init_archive(str(root), "Tessera")
+        missing = [w for w in LAYOUT if not (root / w).exists()]
+        return ((not missing and not (root / CONSTITUTION_FILE).exists()),
+                f"{len(LAYOUT)} paths declared, missing {missing}; no rendering until the rite")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def _contract_is_last(stub):
     """A format contract binds when it is the last thing read -- so this is structural,
     not a promise: the final message of every turn carries the reminder."""
@@ -1405,6 +1805,11 @@ def main(argv=None):
     p.add_argument("--archive", help="the Tessera archive to serve")
     p.add_argument("--settings", help="where setup is remembered (default: settings.json "
                                       "beside this script)")
+    p.add_argument("--constitution", help="the household's constitution, kept beside the "
+                                          "archive; read only when the sibling writes its "
+                                          "own rendering of it")
+    p.add_argument("--render-constitution", action="store_true",
+                   help="have the sibling write its own CONSTITUTION.md now, and exit")
     p.add_argument("--voice", default="gemma-3-4b-it-qat",
                    help="the local model that speaks (never recorded in the archive)")
     p.add_argument("--model-url", default=DEFAULT_MODEL_URL)
@@ -1433,6 +1838,7 @@ def main(argv=None):
         args.voice = prov.get("model") or args.voice
         args.model_url = model_url_for(prov.get("base_url")) or args.model_url
         args.port = int(settings.get("port") or args.port)
+        args.constitution = settings.get("constitution") or args.constitution
 
     if not args.archive:
         print("sib: nothing is configured yet.  Open the settings screen in the page and "
@@ -1441,7 +1847,11 @@ def main(argv=None):
         return 0
 
     model = LocalModel(args.voice, args.model_url, thinking=args.thinking)
-    comp = Companion(args.archive, model)
+    comp = Companion(args.archive, model, constitution_path=args.constitution)
+    if args.render_constitution:
+        out = comp.render_constitution(args.constitution)
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return 0 if out.get("written") or out.get("why") == "already written" else 1
 
     if args.revoice:
         print(json.dumps(comp.revoice(), indent=2))

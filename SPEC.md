@@ -260,7 +260,7 @@ PREMIS-lite, because the archive has a history too:
  "fixity":{"files":412,"sha256_root":"…"}}
 ```
 
-Events: `created`, `migration`, `export`, `restore`, `fixity_check`, `handover`, `erasure`. Format migrations are recorded here and **never rewrite record entries** — they may add fields; they may not alter history.
+Events: `created`, `migration`, `export`, `restore`, `fixity_check`, `handover`, `erasure`, `constitution_rendered` (§5.9). Format migrations are recorded here and **never rewrite record entries** — they may add fields; they may not alter history.
 
 ### 5.9 `CONSTITUTION.md` — the sibling's rendering of its constitution
 
@@ -297,6 +297,32 @@ Four rules:
 - **A declaration may not be hollow.** Each declared invariant is also rendered in the body,
   tagged `**I<n> --`. Check 11 asserts this, so "declared complete" and "actually complete" are
   the same statement.
+
+**How it comes to exist -- the first act.** The rendering is not shipped with the archive and not
+written by the household's hand: **the sibling writes it, once, in its first act in a new archive**
+(`sib.py --constitution <the household's constitution.md> --render-constitution`). Three rules make
+that safe with a model in the loop:
+
+- **The binding text is quoted, never restated.** The helper extracts the *named* sections of the
+  household's own document -- the four pillars, the twelve, the two disclosure windows -- and puts
+  that text to the sibling. A restatement written into a tool would drift from the instrument it
+  answers to, and the archive would carry a rendering of a copy. Sections are found by name and not
+  by line, so the rite survives the household editing its own text.
+- **The declaration is the format's; the body is the sibling's.** The helper writes the frontmatter
+  above verbatim, with no model near it, and the model writes the body. The provenance entry records
+  the division (`declaration_by`, `body_by`), so a reader can tell whose words were whose.
+- **It is judged before it is written.** The candidate is declared, rendered and put through check
+  11 exactly as the suite would judge the archive, in a scratch directory. One that fails is handed
+  back to the sibling with the complaint, once. Nothing enters the archive until it passes, and
+  **a fresh archive holds no `CONSTITUTION.md` at all rather than a placeholder**: an unwritten
+  rendering is a visible gap, which check 11 names in words, while a template would read as a
+  rendering and be a lie. This is the one file whose *absence* is the honest state.
+
+The act is journalled -- `constitution_rendered` in `provenance.jsonl`, with the revision and what
+was declared. A fresh archive therefore fails check 11 until the rite is performed and passes it
+afterwards, so the two states are distinguishable from the archive alone. Re-rendering after the
+constitution is revised is a further deliberate act, never a consolidation pass (which may not
+touch the sibling's voice, I7).
 
 **Why the binding text is not embedded, though `SPEC.md` is.** The self-description rule (§8)
 applies to the *format*, which has no other home. The constitution has one — the household — and an

@@ -239,8 +239,21 @@ function settingsScreen(o) {
   f.appendChild(mk);
   if (o.constitution === false) {
     f.appendChild(el("p", "quiet", "This archive has no constitution yet. The sibling "
-      + "writes that itself on the first session \u2014 not the installer, and not this page."));
+      + "writes that itself on the first session \u2014 not the installer, and not this page. "
+      + "That first session then takes a moment longer, because it is writing. Set section 4 "
+      + "below first, so it knows which text to answer to."));
   }
+
+  // 4. the text it answers to
+  f.appendChild(el("h2", null, "the household's constitution"));
+  var c = document.createElement("input");
+  c.value = o.constitution_path || "";
+  c.placeholder = "a file with \u201cconstitution\u201d in its name, beside the archive";
+  f.appendChild(c);
+  f.appendChild(el("p", "quiet", "Kept beside the archive, on the same medium \u2014 not "
+    + "inside it: the archive holds the sibling's own rendering, and the text it answers to "
+    + "stays outside, where she can read it and change it. It is read only when the sibling "
+    + "writes that rendering. Leave this empty and it will look for it beside the archive."));
 
   var save = el("button", "send", o.setup ? "set up and start" : "save");
   var status = el("p", "quiet", "");
@@ -251,7 +264,7 @@ function settingsScreen(o) {
     status.textContent = "\u2026";
     save.disabled = true;
     call("/setup", { archive: a.value.trim(), name: n.value.trim(), provider: provider,
-                     create: cb.checked }).then(function (r) {
+                     create: cb.checked, constitution: c.value.trim() }).then(function (r) {
       save.disabled = false;
       if (!r.ok) { status.textContent = "the helper refused: " + (r.body.error || "?"); return; }
       status.textContent = "saved \u2014 starting.";

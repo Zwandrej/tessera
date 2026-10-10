@@ -323,6 +323,36 @@ and I would rather have a deal I can see than one I cannot.
     return root
 
 
+# The entry the archive no longer holds.  It is not in the record: the tombstone below is the
+# only trace of it, which is the point -- erasure leaves a record of the act, not of the text.
+ERASED = {"id": "evt-20261004-0011", "t": "2026-10-04T20:15:00+02:00",
+          "t_rec": "2026-10-04T20:15:02+02:00", "kind": "reflection", "actor": "learner",
+          "lang": "en", "text": "I am not ready to talk about this yet.",
+          "refs": [], "supersedes": None, "private": True, "tomb": None}
+
+
+def build_pair(root):
+    """Build the example archive *and the state it was in earlier* -- the same fixture before the
+    erasure its tombstone records.  Checks 4 and 5 compare two states, so the pair has to agree
+    about every id, and a hand-made previous state starts disagreeing the moment the fixture
+    changes (it did: the shipped one still carried the ids of an older revision, and check 4
+    rightly called it entry loss).  One source, two states."""
+    root = Path(root)
+    prev = root.parent / (root.name + ".prev")
+    build(root)
+    build(prev)
+    record = sorted(prev.glob("record/*/*.jsonl"))[0]
+    rows = [json.loads(line) for line in record.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows.insert(0, dict(ERASED))
+    jl(record, rows)
+    (prev / "tombstones.jsonl").write_text("", encoding="utf-8")   # nothing erased yet
+    prov = prev / "provenance.jsonl"
+    kept = [line for line in prov.read_text(encoding="utf-8").splitlines()
+            if line.strip() and json.loads(line).get("event") != "erasure"]
+    prov.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    return {"archive": str(root), "previous": str(prev)}
+
+
 if __name__ == "__main__":
     target = sys.argv[1] if len(sys.argv) > 1 else "examples/minimal"
-    print(f"built {build(Path(target))}")
+    print(f"built {build_pair(Path(target))}")

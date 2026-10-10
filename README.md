@@ -13,30 +13,38 @@ expected to conform to it — not the other way round. When they disagree, the c
 | `tessera.py` | the reference reader — load, render, rebuild the index, `check` |
 | `tessera_bag.py` | the BagIt backup layer — `create` · `verify` · `restore` (with tombstone replay) |
 | `tessera_conformance.py` | the thirteen-check conformance suite, plus `--selftest` |
-| `mkfixture.py` | builds the example archive used by the suite and the demos |
+| `mkfixture.py` | builds the example archive *and the earlier state it is compared against* |
 | `sib.py` · `sibling.html` | the session helper — the only tap to the model and the only writer of the archive — and its one-file page |
 | `SPEC.md` | the normative format specification (copy of the vault document) |
 
 ## Run it
 
 ```sh
-python3 mkfixture.py examples/minimal
+python3 mkfixture.py examples/minimal               # archive + examples/minimal.prev
 python3 tessera.py read examples/minimal          # render the archive
 python3 tessera.py index examples/minimal         # rebuild memory/index/ (derived, disposable)
 python3 tessera.py check examples/minimal         # reader-level validity
 python3 tessera_conformance.py examples/minimal   # the thirteen checks
 python3 tessera_conformance.py --selftest         # prove the checks can fail
 python3 sib.py --archive examples/minimal --port 8799   # a session; then open sibling.html
-python3 sib.py --selftest                              # 22/22: nothing is written outside the archive
+python3 sib.py --selftest                              # 33/33: nothing is written outside the archive
 ```
 
 To compare two states (conformance check 4, append-only):
 
 ```sh
-python3 tessera_conformance.py <archive> --previous <earlier-snapshot>
+python3 tessera_conformance.py examples/minimal --previous examples/minimal.prev
 ```
 
-## The four rules this code exists to enforce
+To have the sibling write its own rendering of the household's constitution -- its first act in a new
+archive, and the one file a fresh archive deliberately does not carry (spec §5.9):
+
+```sh
+python3 sib.py --archive <dir> --voice <model> \
+    --constitution "<the household's constitution.md>" --render-constitution
+```
+
+## The five rules this code exists to enforce
 
 1. **The text is the archive.** Nothing derived is load-bearing — `memory/index/` can
    be deleted and rebuilt byte-identically at any time (check 2).
@@ -52,20 +60,30 @@ python3 tessera_conformance.py <archive> --previous <earlier-snapshot>
 
 ## Status
 
-v0.1 — 2026-10-10. Verified: **12/12 executed checks pass** on a valid archive (check 4
-skipped), **13/13** when run against a previous snapshot so append-onlyness is actually
-compared, and `--selftest` catches **all 15 injected faults** — binary blob, unevidenced
-relation, rewritten history, absolute-path leak, deleted spec, deleted constitution, a
-constitution that declares a clause it never renders, non-deterministic index, no-op
-tombstone replay, recency-maximising retriever, reader that fetches, a record entry whose
-id disagrees with its own timestamp, an out-of-order record, evidence pointing at a
-missing event, a relation recalled before it was created.
+v0.1 — 2026-10-10. Every number below is from a run on this machine:
 
-The session helper carries its own hermetic selftest — **23/23** — asserting the one thing
-the interface is answerable for: a session run in a sandbox home writes nothing outside the
-archive, the model's name appears in no file, one writer per file holds, a greeting is
-refused unless it satisfies its contract, and the greeting is never told that the
-sibling's own words were the learner's.
+- **13/13 conformance checks** on the example pair (`examples/minimal` against
+  `examples/minimal.prev`) with **0 skipped**: check 4 compares 5 entries across the two states,
+  and check 5's un-replayed control proves the erasure check is not vacuous — a restored bag
+  *without* the tombstone replay still contains the erased entry.
+- **A fresh archive is 9/13, and that is the honest state**: three checks have nothing to look at
+  yet, and **check 11 fails because the sibling has not yet written its rendering** — the one
+  gap a new archive is meant to show (spec §5.9).
+- **15/15 injected faults caught** by `tessera_conformance.py --selftest`: binary blob,
+  unevidenced relation, rewritten history, absolute-path leak, deleted spec, deleted constitution,
+  a constitution that declares a clause it never renders, non-deterministic index, no-op tombstone
+  replay, recency-maximising retriever, reader that fetches, a record entry whose id disagrees with
+  its own timestamp, an out-of-order record, evidence pointing at a missing event, a relation
+  recalled before it was created.
+- **33/33 helper checks** (`sib.py --selftest`), asserting what the interface is answerable for: a
+  session run in a sandbox home writes nothing outside the archive, the model's name appears in no
+  file, one writer per file holds, a greeting is refused unless it satisfies its contract and the
+  greeting is never told the sibling's own words were the learner's, and the rite holds — the
+  declaration is the format's, the body is the sibling's, and a rendering that fails check 11 is
+  refused with the complaint handed back to the sibling.
+- **The rite, run for real**: against the household's own constitution and a local model, the
+  sibling wrote a 907-word rendering of all four pillars, twelve invariants and both windows;
+  check 11 passed afterwards; and the model's name appears in no file of the archive (I2).
 
 Conformance check 4 is skipped unless `--previous <snapshot>` is supplied, because
 append-onlyness is a statement about two states, not one.
@@ -88,11 +106,11 @@ llama.cpp, vLLM, Jan, KoboldCpp, llamafile, text-generation-webui) and a server 
 if it actually answers with a model list; models that cannot converse (embeddings, rerankers) are
 not offered as the voice. Addresses other than this machine are refused.
 
-Your answer is kept in `settings.json` beside this file — a path, a port and an endpoint, and
-nothing else. It is not needed to read the archive: copy the archive anywhere and it still opens.
+Your answer is kept in `settings.json` beside this file — at most two paths (the archive, and the household's constitution if it gave
+one), a port and an endpoint -- and nothing else. It is not needed to read the archive: copy the archive anywhere and it still opens.
 
     python3 sib.py                 # no arguments: serve the settings screen
     python3 sib.py                 # with settings already written: open the session
     python3 sib.py --archive DIR   # an archive directly, ignoring settings
     python3 sib.py --open          # the session on the command line, no page
-    python3 sib.py --selftest      # 29 checks, no model and no network needed
+    python3 sib.py --selftest      # 33 checks, no model and no network needed
