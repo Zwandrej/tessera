@@ -27,7 +27,7 @@ python3 tessera.py check examples/minimal         # reader-level validity
 python3 tessera_conformance.py examples/minimal   # the thirteen checks
 python3 tessera_conformance.py --selftest         # prove the checks can fail
 python3 sib.py --archive examples/minimal --port 8799   # a session; then open sibling.html
-python3 sib.py --selftest                              # 33/33: nothing is written outside the archive
+python3 sib.py --selftest                              # 35/35: nothing is written outside the archive
 ```
 
 To compare two states (conformance check 4, append-only):
@@ -75,12 +75,14 @@ v0.1 — 2026-10-10. Every number below is from a run on this machine:
   replay, recency-maximising retriever, reader that fetches, a record entry whose id disagrees with
   its own timestamp, an out-of-order record, evidence pointing at a missing event, a relation
   recalled before it was created.
-- **33/33 helper checks** (`sib.py --selftest`), asserting what the interface is answerable for: a
+- **35/35 helper checks** (`sib.py --selftest`), asserting what the interface is answerable for: a
   session run in a sandbox home writes nothing outside the archive, the model's name appears in no
   file, one writer per file holds, a greeting is refused unless it satisfies its contract and the
-  greeting is never told the sibling's own words were the learner's, and the rite holds — the
-  declaration is the format's, the body is the sibling's, and a rendering that fails check 11 is
-  refused with the complaint handed back to the sibling.
+  greeting is never told the sibling's own words were the learner's, **a turn that recites the
+  brief is refused** (the record carries the archive's own line instead, and the session reports
+  `how: fallback`) while ordinary speech ships unchanged, and the rite holds — the declaration is the format's, the body
+  is the sibling's, and a rendering that fails check 11 is refused with the complaint handed back to
+  the sibling.
 - **The rite, run for real**: against the household's own constitution and a local model, the
   sibling wrote a 907-word rendering of all four pillars, twelve invariants and both windows;
   check 11 passed afterwards; and the model's name appears in no file of the archive (I2).
@@ -113,4 +115,4 @@ one), a port and an endpoint -- and nothing else. It is not needed to read the a
     python3 sib.py                 # with settings already written: open the session
     python3 sib.py --archive DIR   # an archive directly, ignoring settings
     python3 sib.py --open          # the session on the command line, no page
-    python3 sib.py --selftest      # 33 checks, no model and no network needed
+    python3 sib.py --selftest      # 35 checks, no model and no network needed

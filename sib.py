@@ -796,6 +796,11 @@ class Companion:
 
         system = self.system_prompt(self.retrieved(text), self._voice_note())
         reply = clean_reply(self.model.complete_contract(system, msgs, TURN_REMINDER))
+        how = "model"
+        ok, why = vet_turn(reply, system + "\n" + TURN_REMINDER)
+        if not ok:
+            self._session_notes.append(f"turn rejected by the validator: {why}")
+            reply, how = fallback_turn(), "fallback"
 
         self._append_line(f"record/{dt.date.today():%Y}/{dt.date.today():%Y-%m}.jsonl", {
             "id": f"evt-{dt.datetime.now():%Y%m%d-%H%M%S}-s", "t": now_iso(), "t_rec": now_iso(),
@@ -809,7 +814,8 @@ class Companion:
         return {"ids": [e.get("id") for e in wrote],
                 "reply": reply, "retrieved": self.retrieved(text, k=6),
                 "stated_ignorance": states_ignorance(reply),
-                "session_notes": list(self._session_notes), "voice_note": bool(self._voice_note())}
+                "session_notes": list(self._session_notes), "how": how,
+                "voice_note": bool(self._voice_note())}
 
     # -- moment 3: the session closes --------------------------------------
     def close(self, turns=0, unknown_stated=0):
@@ -937,6 +943,45 @@ def own_sentences(text):
     learner's, and counting it as the sibling's made the model's greeting fail a rule the
     archive's own fallback breaks -- measured on the first clean run."""
     return sentences(QUOTED.sub(" ", text or ""))
+
+
+# ---------------------------------------------------------------------------
+# the turn contract, checked
+# ---------------------------------------------------------------------------
+
+# The first running loop drew a verbatim line of the standing orders back at the learner instead of
+# the sibling speaking as herself ("She explains first: if she is not the one doing the explaining
+# within the first five minutes...").  The greeting had a validator; the turn had only
+# TURN_REMINDER -- a request, which the local model stopped honouring once the brief was long
+# enough.  A request is not a contract, so this is the turn's.  Deliberately narrow: it decides
+# whether these words are the sibling's, not whether the turn is good.
+
+RECITAL_RUN = 8                       # words copied from the brief, in a row, are not speech
+
+
+def runs(text, n=RECITAL_RUN):
+    words = WORD.findall((text or "").lower())
+    return {" ".join(words[i:i + n]) for i in range(max(0, len(words) - n + 1))}
+
+
+def vet_turn(reply, brief):
+    """(ok, why).  An empty turn is not a failure -- it is a state (the sibling said nothing).
+    A turn that repeats the brief is: it is the format talking, not the sibling."""
+    said = clean_reply(reply or "")
+    if not said:
+        return True, "an empty turn is a state, not a failure"
+    copied = runs(said) & runs(brief)
+    if copied:
+        return False, (f"recites the brief: {RECITAL_RUN} words copied verbatim, e.g. "
+                       f"{sorted(copied)[0]!r}")
+    return True, "the sibling's own words"
+
+
+def fallback_turn():
+    """What the archive says when the model's turn is refused.  Not an apology and not an error
+    message: it says plainly that the turn was not taken, and hands the floor back."""
+    return ("I did not take that turn -- what came out was my instructions, not my answer. "
+            "Say it again, or take it yourself and I will follow.")
 
 
 def vet_greeting(text, required, extra=0):
@@ -1413,6 +1458,8 @@ def selftest(verbose=True):
         check("the rite: a hollow one is refused, told why", _rite_retry)
         check("the rite: nothing is written on failure", _rite_refuses)
         check("a new archive is the described layout", _skeleton_layout)
+        check("a turn that recites the brief is refused", _turn_recital_refused)
+        check("an ordinary turn ships unchanged", _turn_own_words_shipped)
         record_before = (arch_root / f"record/{dt.date.today():%Y}/"
                                      f"{dt.date.today():%Y-%m}.jsonl").read_text(encoding="utf-8")
 
@@ -1697,6 +1744,59 @@ def _rite_first_act():
                  and last.get("fixity") == tessera.sha256_file(archive / CONSTITUTION_FILE)
                  and not named and bool(comp._session_notes)),
                 f"{why11}; recorded {last.get('id')}; model-name leaked: {named}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+class _RecitingModel:
+    """The failure, reproduced.  The local model did not invent anything: it copied its own brief
+    back.  So the check is of the observed case, not of a hypothetical one -- whatever the brief
+    happens to say, this model repeats a run of it."""
+
+    name = "stub/reciting-the-brief"
+
+    def __init__(self, start=40, count=24):
+        self.start, self.count, self.calls = start, count, []
+
+    def complete(self, system, messages, **kw):
+        self.calls.append(system)
+        return " ".join(system.split()[self.start:self.start + self.count])
+
+    def complete_contract(self, system, messages, contract, **kw):
+        return self.complete(system, messages, **kw)
+
+
+def _turn_archive(prefix):
+    import mkfixture
+    tmp = Path(tempfile.mkdtemp(prefix=prefix))
+    archive = tmp / "a"
+    mkfixture.build(str(archive))
+    return tmp, archive
+
+
+def _turn_recital_refused():
+    """A turn that repeats the standing orders is not the sibling speaking: it does not ship, the
+    archive's own line speaks instead, and the fact that it did is recorded."""
+    tmp, archive = _turn_archive("sib-turn-recital-")
+    try:
+        comp = Companion(archive, _RecitingModel())
+        out = comp.turn("hello from a file:// page")
+        return ((out["how"] == "fallback" and out["reply"] == fallback_turn()
+                 and any("recites the brief" in n for n in out["session_notes"])),
+                f"how={out['how']}; said {clip(out['reply'], 64)!r}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _turn_own_words_shipped():
+    """And ordinary speech still gets through: the contract refuses recitation, not conversation."""
+    tmp, archive = _turn_archive("sib-turn-own-")
+    try:
+        said = "A row swap moves the pivot, so order matters. What did you try first?"
+        comp = Companion(archive, StubModel(said))
+        out = comp.turn("I keep getting the wrong answer")
+        return ((out["how"] == "model" and out["reply"] == said and not out["session_notes"]),
+                f"how={out['how']}; unchanged={out['reply'] == said}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
