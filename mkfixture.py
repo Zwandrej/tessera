@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Andrej Zwitter
 #!/usr/bin/env python3
 """Build a minimal valid Tessera archive (SPEC.md Appendix A) as a test fixture.
 

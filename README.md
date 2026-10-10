@@ -116,3 +116,21 @@ one), a port and an endpoint -- and nothing else. It is not needed to read the a
     python3 sib.py --archive DIR   # an archive directly, ignoring settings
     python3 sib.py --open          # the session on the command line, no page
     python3 sib.py --selftest      # 35 checks, no model and no network needed
+
+## Licence
+
+**Apache-2.0** — see [`LICENSE`](LICENSE). It covers the code and the format specification in
+`SPEC.md` alike, and the patent grant is deliberate: the point of a format is that other people
+implement it. Copyright (c) 2026 Andrej Zwitter.
+
+## Citing this work
+
+The programme is **the Cognitive Sibling**; the archive format it defines is **Tessera,
+`tessera/0.1`**, and this repository is its reference implementation. It accompanies:
+
+> Deguchi, Y. & Zwitter, A. *The Cognitive Sibling: Existential AI and Teleological Alignment in
+> Education* (in preparation).
+
+The format is versioned and the reader is the law: a `tessera/0.1` archive is valid if the reader
+in this repository can rebuild everything derived from it, and a new version that a reader cannot
+follow is a new format, not a revision of this one.

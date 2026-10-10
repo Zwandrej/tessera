@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: Apache-2.0 | Copyright (c) 2026 Andrej Zwitter
 # Double-click this file.  Nothing to install, nothing to configure by hand.
 #
 # It starts the sibling's helper -- the only thing that talks to the local model, and the
