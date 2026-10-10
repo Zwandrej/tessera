@@ -32,6 +32,7 @@ research vault:
 | [`docs/prior-art-and-format-survey.md`](docs/prior-art-and-format-survey.md) | the systems this format was argued against, and what it takes from each |
 | [`docs/design-brief.md`](docs/design-brief.md) | what the thing is for, and what it must never do |
 | [`docs/prototype-specification.md`](docs/prototype-specification.md) | the study design the prototype is built to |
+| [`docs/interface-specification.md`](docs/interface-specification.md) | the session helper and the page: what the interface is answerable for |
 
 **One name, two different things.** An *archive* carries a file called `CONSTITUTION.md`, and it is
 **not** this one: it is the sibling's own rendering — written by the sibling alone, in its own voice,
@@ -43,8 +44,9 @@ placeholder.
 The binding text is deliberately **not embedded in archives**, so it has to travel *with* one, on the
 same media, beside the archive — which is why it is here.
 
-Not published here: the research skeleton, the interface specification and the project index. They
-are vault-internal, and the documents above name them in plain text where they would otherwise link.
+Not published here: the research skeleton, the project index, and the two essay and article notes the
+design brief rests on. They are vault-internal, and the documents above name them in plain text where
+they would otherwise link.
 These documents are **exported copies** of vault documents; the vault copies are the ones edited.
 
 ## Run it

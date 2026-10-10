@@ -26,11 +26,11 @@ See [the design brief](design-brief.md) for the rationale. This document is the 
 - The archive, the sibling's own self, and the four longitudinal indicators.
 - The WE-loop as the core interaction pattern.
 - Guardian-read window with a designed handover.
-- The session surface: one local single-file page plus a small self-contained helper (the interface specification (vault-internal, not published here)).
+- The session surface: one local single-file page plus a small self-contained helper ([the interface specification](interface-specification.md)).
 
 **Out of scope for v0.1** (named so they don't creep in)
 
-- Voice, camera, embodiment, a physical object (voice returns as a v0.2 experiment once the swap demonstration passes — the interface specification (vault-internal, not published here) §8).
+- Voice, camera, embodiment, a physical object (voice returns as a v0.2 experiment once the swap demonstration passes — [the interface specification](interface-specification.md) §8).
 - Multi-user, multi-device, any sync.
 - Any guardian dashboard or remote view — the guardian reads the files directly.
 - Any network capability whatsoever.
@@ -133,7 +133,7 @@ The proto-sibling must not learn to smooth over the second category in order to 
 
 **3.7 Evaluation hooks, built in from day one.** Every session appends to `eval/indicators.jsonl`: signals bearing on narrative integrity, cognitive resilience, first-personification, and autonomous reflection — plus a dependence signal (is the learner needing the sibling less for the same class of task?). These are the research measures (see the research skeleton (vault-internal, not published here)); they are cheap to log and impossible to reconstruct later.
 
-**3.8 The interface.** One local single-file page, opened directly from the filesystem — no framework, no build step, no server — plus a small self-contained helper that is the only tap to the model and the only writer of the archive. The interface is a **derived artifact**: delete it and the session still runs from a terminal, and nothing is lost. Two age-graded presentations render the same text (learner view, research view); access control is never the interface's job. Full specification, including the four probe results that forced this shape: the interface specification (vault-internal, not published here).
+**3.8 The interface.** One local single-file page, opened directly from the filesystem — no framework, no build step, no server — plus a small self-contained helper that is the only tap to the model and the only writer of the archive. The interface is a **derived artifact**: delete it and the session still runs from a terminal, and nothing is lost. Two age-graded presentations render the same text (learner view, research view); access control is never the interface's job. Full specification, including the four probe results that forced this shape: [the interface specification](interface-specification.md).
 
 ## 4. Consent and the handover
 
@@ -153,7 +153,7 @@ The proto-sibling must not learn to smooth over the second category in order to 
 | The sibling becoming precious | it will be mourned if it dies | I3 is honest about mortality; the shared artifact is the durable thing |
 | Backup silently defeating erasure | a pre-erasure snapshot resurrects what was deleted | `tombstones.jsonl` is the one synchronously replicated file and is replayed on restore (I9); the erasure window is a stated number — ≤24 h to the next snapshot, ≤12 months on any household medium, ≤7 days for the offline copy — and the terms are stated in the constitution, not hidden |
 | The backup becoming the leak | a NAS is a network | household-owned media only, never a third party; no cloud endpoint exists (I3) |
-| A web page cannot reach the local model | the surface silently degrades into a mock, or someone "fixes" it by enabling a wildcard CORS on the model server — which lets any website in the browser query it, i.e. an outside line (I1) | the helper is the only tap; its CORS grants the opaque origin `null` and nothing else; the `--cors` flag is a documented test mode with its cost stated (the interface specification (vault-internal, not published here) §3) |
+| A web page cannot reach the local model | the surface silently degrades into a mock, or someone "fixes" it by enabling a wildcard CORS on the model server — which lets any website in the browser query it, i.e. an outside line (I1) | the helper is the only tap; its CORS grants the opaque origin `null` and nothing else; the `--cors` flag is a documented test mode with its cost stated ([the interface specification](interface-specification.md) §3) |
 
 ## 6. What v0.1 must demonstrate
 
