@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Andrej Zwitter
-#!/usr/bin/env python3
 """Build a minimal valid Tessera archive (SPEC.md Appendix A) as a test fixture.
 
     python3 mkfixture.py examples/minimal
@@ -355,6 +355,17 @@ def build_pair(root):
     return {"archive": str(root), "previous": str(prev)}
 
 
+def usage():
+    print("usage: python3 mkfixture.py [DIRECTORY]")
+    print()
+    print("Builds the example archive at DIRECTORY (default: examples/minimal), and the earlier")
+    print("state it was in before the erasure its tombstone records, at DIRECTORY + '.prev'.")
+    print("Conformance checks 4 and 5 compare two states, so both are built together.")
+
+
 if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else "examples/minimal"
-    print(f"built {build_pair(Path(target))}")
+    args = sys.argv[1:]
+    if any(a.startswith("-") for a in args):
+        usage()
+        sys.exit(0 if any(a in ("-h", "--help") for a in args) else 2)
+    print(f"built {build_pair(Path(args[0] if args else 'examples/minimal'))}")

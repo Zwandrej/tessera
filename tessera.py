@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Andrej Zwitter
-#!/usr/bin/env python3
 """Tessera reference reader.
 
 Standard library only, by design (SPEC.md 8.2).  An archive is valid if this

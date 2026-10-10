@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Andrej Zwitter
-#!/usr/bin/env python3
 """Tessera backup layer: BagIt bags, verification, and restore with tombstone replay.
 
 SPEC.md 7.  The point of BagIt is not cleverness.  It is that the backup is

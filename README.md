@@ -15,7 +15,37 @@ expected to conform to it — not the other way round. When they disagree, the c
 | `tessera_conformance.py` | the thirteen-check conformance suite, plus `--selftest` |
 | `mkfixture.py` | builds the example archive *and the earlier state it is compared against* |
 | `sib.py` · `sibling.html` | the session helper — the only tap to the model and the only writer of the archive — and its one-file page |
-| `SPEC.md` | the normative format specification (copy of the vault document) |
+| `SPEC.md` | the normative format specification |
+| `CONSTITUTION.md` | the binding text the format is subordinate to (`constitution/1.0`) |
+| `docs/` | the design and research documents the specification refers to |
+
+## The documents
+
+The format is not self-contained without these, so they are here rather than only in the project's
+research vault:
+
+| Document | What it is |
+|---|---|
+| [`SPEC.md`](SPEC.md) | **Normative.** How the archive is stored. When this file and the code disagree, the code is wrong. |
+| [`CONSTITUTION.md`](CONSTITUTION.md) | **Binding.** `constitution/1.0` — the four pillars, invariants I1–I12, the duties of the four parties, and the sibling's rights. It governs *what may be done with an archive, and by whom*; the specification governs how it is stored; where they conflict, this one wins. Licensed with the rest, so a household can adopt and amend it. |
+| [`docs/decision-memory-format.md`](docs/decision-memory-format.md) | why the memory is plain text with a disposable index, and how that was decided |
+| [`docs/prior-art-and-format-survey.md`](docs/prior-art-and-format-survey.md) | the systems this format was argued against, and what it takes from each |
+| [`docs/design-brief.md`](docs/design-brief.md) | what the thing is for, and what it must never do |
+| [`docs/prototype-specification.md`](docs/prototype-specification.md) | the study design the prototype is built to |
+
+**One name, two different things.** An *archive* carries a file called `CONSTITUTION.md`, and it is
+**not** this one: it is the sibling's own rendering — written by the sibling alone, in its own voice,
+declaring which pillars, invariants and windows it speaks for, and read at the start of every turn
+(spec §5.9, checked by conformance check 11). *The rendering is the sibling's; the constitution is
+the household's.* A fresh archive deliberately carries no `CONSTITUTION.md` at all rather than a
+placeholder.
+
+The binding text is deliberately **not embedded in archives**, so it has to travel *with* one, on the
+same media, beside the archive — which is why it is here.
+
+Not published here: the research skeleton, the interface specification and the project index. They
+are vault-internal, and the documents above name them in plain text where they would otherwise link.
+These documents are **exported copies** of vault documents; the vault copies are the ones edited.
 
 ## Run it
 
@@ -36,13 +66,16 @@ To compare two states (conformance check 4, append-only):
 python3 tessera_conformance.py examples/minimal --previous examples/minimal.prev
 ```
 
-To have the sibling write its own rendering of the household's constitution -- its first act in a new
-archive, and the one file a fresh archive deliberately does not carry (spec §5.9):
+To have the sibling write its own rendering of the constitution -- its first act in a new archive,
+and the one file a fresh archive deliberately does not carry (spec §5.9):
 
 ```sh
 python3 sib.py --archive <dir> --voice <model> \
-    --constitution "<the household's constitution.md>" --render-constitution
+    --constitution CONSTITUTION.md --render-constitution
 ```
+
+`CONSTITUTION.md` here is the binding text (`constitution/1.0`). Point the session at it, or at the
+household's own amended copy -- Part IX of it says who may amend it, and how.
 
 ## The five rules this code exists to enforce
 
@@ -119,9 +152,9 @@ one), a port and an endpoint -- and nothing else. It is not needed to read the a
 
 ## Licence
 
-**Apache-2.0** — see [`LICENSE`](LICENSE). It covers the code and the format specification in
-`SPEC.md` alike, and the patent grant is deliberate: the point of a format is that other people
-implement it. Copyright (c) 2026 Andrej Zwitter.
+**Apache-2.0** — see [`LICENSE`](LICENSE). It covers the code, the format specification in
+`SPEC.md`, the constitution and the documents in `docs/` alike, and the patent grant is deliberate:
+the point of a format is that other people implement it. Copyright (c) 2026 Andrej Zwitter.
 
 ## Citing this work
 
